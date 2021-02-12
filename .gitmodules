@@ -1,0 +1,3 @@
+[submodule "tasnem_har/submodules/hopfield-layers"]
+	path = tasnem_har/submodules/hopfield-layers
+	url = https://github.com/ml-jku/hopfield-layers.git

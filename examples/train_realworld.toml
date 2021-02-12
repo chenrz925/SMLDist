@@ -1,0 +1,379 @@
+__schema__ = "waterch.tasker.launcher.Launcher"
+__name__ = "Train a TASNeM-HAR model on the RealWorld HAR dataset"
+__author__ = "Chen Runze"
+__version__ = "1.0.0"
+__email__ = "chenrz925@bupt.edu.cn"
+__abstract__ = "The example pipeline to train a model on RealWorld HAR dataset."
+
+# ----- Global settings -----
+
+[__setting__]
+[__setting__.storage]
+reference = "tasker.storages.vanilla.HardPickleStorage"
+id = 'TASNeM-RealWorld-HAR'
+[__setting__.log]
+[__setting__.log.console]
+class = 'logging.StreamHandler'
+formatter = 'default'
+level = 'INFO'
+stream = 'ext://sys.stdout'
+[__setting__.log.file]
+class = 'logging.FileHandler'
+formatter = 'default'
+level = 'DEBUG'
+filename = 'TASNeM-RealWorld-HAR-DEBUG.log'
+[__setting__.log.file_info]
+class = 'logging.FileHandler'
+formatter = 'default'
+level = 'INFO'
+filename = 'TASNeM-RealWorld-HAR-INFO.log'
+
+# ----- Task metainfo -----
+
+[[__meta__]]
+reference = "tasker.tasks.utils.SetEnvironmentTask"
+include = false
+path = ""
+profile = "env"
+execute = true
+
+[[__meta__]]
+reference = "tasker.tasks.torch.SimpleDataLoaderTask:train"
+include = false
+path = ""
+profile = "train_loader"
+execute = true
+
+[[__meta__]]
+reference = "tasker.tasks.torch.SimpleDataLoaderTask:validate"
+include = false
+path = ""
+profile = "validate_loader"
+execute = true
+
+[[__meta__]]
+reference = "tasnem_har.tasks.TASNeMTeacherTrainTask:teacher"
+include = false
+path = ""
+profile = "model"
+execute = true
+
+[[__meta__]]
+reference = 'tasnem_har.tasks.TASNeMStudentTrainTask'
+include = false
+path = ''
+profile = 'student_model'
+execute = true
+
+# ----- task profiles -----
+
+[env]
+env = [
+    ["CUDA_VISIBLE_DEVICES", "0"]
+]
+
+[train_loader]
+sampler_type = "none"
+[train_loader.dataset]
+reference = "tasnem_har.datasets.realworld_har.RealWorldHAR"
+[train_loader.dataset.kwargs]
+# Please replace the root_dir when running in your environment
+root_dir = "/DIRECTORY/OF/REALWORLD-HAR/DATASET"
+frame_period = 5
+filter_type = "if_not"
+filter_by = ["proband15", "proband14"]
+num_workers = 4
+process_method = 'robust'
+[train_loader.loader]
+batch_size = 256
+shuffle = true
+num_workers = 0
+pin_memory = false
+drop_last = false
+
+[validate_loader]
+sampler_type = "none"
+[validate_loader.dataset]
+reference = "tasnem_har.datasets.realworld_har.RealWorldHAR"
+[validate_loader.dataset.kwargs]
+# Please replace the root_dir when running in your environment
+root_dir = "/DIRECTORY/OF/REALWORLD-HAR/DATASET"
+frame_period = 5
+filter_type = "if" # or "if_not"
+filter_by = ["proband15", "proband14"]
+num_workers = 4
+process_method = 'robust'
+[validate_loader.loader]
+batch_size = 256
+shuffle = false
+num_workers = 0
+pin_memory = false
+drop_last = false
+
+[model]
+device = "cuda:0"
+non_blocking = true
+max_epochs = 200
+mi_weights = true
+[model.model]
+in_channels = 63
+out_channels = 512
+num_classes = 8
+[[model.model.layers]] # 1
+kernel_size = 3
+expansion = 64
+in_channels = 64
+out_channels = 64
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.SELU'
+stride = 2
+[[model.model.layers]] # 2
+kernel_size = 3
+expansion = 288
+in_channels = 64
+out_channels = 128
+attention = 'tasnem_har.models.units.Identity'
+activation = 'torch.nn.SELU'
+stride = 2
+[[model.model.layers]] # 3
+kernel_size = 3
+expansion = 352
+in_channels = 128
+out_channels = 128
+attention = 'tasnem_har.models.units.Identity'
+activation = 'torch.nn.SELU'
+stride = 1
+[[model.model.layers]] # 4
+kernel_size = 5
+expansion = 384
+in_channels = 128
+out_channels = 256
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 2
+[[model.model.layers]] # 5
+kernel_size = 7
+expansion = 480
+in_channels = 256
+out_channels = 256
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.SELU'
+stride = 1
+[[model.model.layers]] # 6 ANCHOR
+kernel_size = 5
+expansion = 480
+in_channels = 256
+out_channels = 256
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.SELU'
+stride = 1
+anchor = true
+[[model.model.layers]] # 7
+kernel_size = 3
+expansion = 960
+in_channels = 256
+out_channels = 512
+attention = 'tasnem_har.models.units.Identity'
+activation = 'torch.nn.Hardswish'
+stride = 2
+[[model.model.layers]] # 8
+kernel_size = 3
+expansion = 800
+in_channels = 512
+out_channels = 512
+attention = 'tasnem_har.models.units.Identity'
+activation = 'torch.nn.Hardswish'
+stride = 1
+[[model.model.layers]] # 9
+kernel_size = 3
+expansion = 736
+in_channels = 512
+out_channels = 512
+attention = 'tasnem_har.models.units.Identity'
+activation = 'torch.nn.Hardswish'
+stride = 1
+[[model.model.layers]] # 10
+kernel_size = 3
+expansion = 736
+in_channels = 512
+out_channels = 512
+attention = 'tasnem_har.models.units.Identity'
+activation = 'torch.nn.Hardswish'
+stride = 1
+[[model.model.layers]] # 11 ANCHOR
+kernel_size = 3
+expansion = 1920
+in_channels = 512
+out_channels = 1024
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 1
+anchor = true
+[[model.model.layers]] # 12
+kernel_size = 3
+expansion = 2688
+in_channels = 1024
+out_channels = 1024
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 1
+[[model.model.layers]] # 13
+kernel_size = 5
+expansion = 2688
+in_channels = 1024
+out_channels = 2048
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 2
+[[model.model.layers]] # 14
+kernel_size = 7
+expansion = 3840
+in_channels = 2048
+out_channels = 2048
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 1
+anchor = true
+[[model.model.layers]] # 15 ANCHOR
+kernel_size = 5
+expansion = 3840
+in_channels = 2048
+out_channels = 2048
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 1
+[model.model.simh]
+update_steps_max = 2
+update_steps_eps = 1e-2
+[model.optimizer]
+reference = "pytorch_ranger.Ranger"
+[model.optimizer.kwargs]
+lr = 1e-3
+[model.optimizer.scheduler]
+reference = 'torch.optim.lr_scheduler.ReduceLROnPlateau'
+[model.optimizer.scheduler.kwargs]
+patience = 5
+factor = 0.85
+verbose = true
+cooldown = 5
+threshold = 1e-7
+mode = "min"
+min_lr = 1e-5
+[model.loss]
+reference = "torch.nn.CrossEntropyLoss"
+[model.loss.kwargs]
+
+[student_model]
+device = 'cuda:0'
+non_blocking = true
+max_epochs = 200
+stage_epochs = 200
+[student_model.model]
+in_channels = 63
+out_channels = 512
+num_classes = 8
+[[student_model.model.layers]] # 1
+kernel_size = 3
+expansion = 64
+in_channels = 64
+out_channels = 64
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.SELU'
+stride = 2
+[[student_model.model.layers]] # 3
+kernel_size = 5
+expansion = 352
+in_channels = 64
+out_channels = 128
+attention = 'tasnem_har.models.units.Identity'
+activation = 'torch.nn.SELU'
+stride = 2
+[[student_model.model.layers]] # 4
+kernel_size = 5
+expansion = 384
+in_channels = 128
+out_channels = 256
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 2
+[[student_model.model.layers]] # 6 ANCHOR
+kernel_size = 9
+expansion = 480
+in_channels = 256
+out_channels = 256
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.SELU'
+stride = 1
+anchor = true
+[[student_model.model.layers]] # 7
+kernel_size = 3
+expansion = 960
+in_channels = 256
+out_channels = 512
+attention = 'tasnem_har.models.units.Identity'
+activation = 'torch.nn.Hardswish'
+stride = 1
+[[student_model.model.layers]] # 8
+kernel_size = 5
+expansion = 800
+in_channels = 512
+out_channels = 512
+attention = 'tasnem_har.models.units.Identity'
+activation = 'torch.nn.Hardswish'
+stride = 2
+[[student_model.model.layers]] # 11 ANCHOR
+kernel_size = 5
+expansion = 1920
+in_channels = 512
+out_channels = 1024
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 1
+anchor = true
+[[student_model.model.layers]] # 12
+kernel_size = 3
+expansion = 2688
+in_channels = 1024
+out_channels = 1024
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 1
+[[student_model.model.layers]] # 13
+kernel_size = 5
+expansion = 2688
+in_channels = 1024
+out_channels = 2048
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 2
+anchor = true
+[[student_model.model.layers]] # 15 ANCHOR
+kernel_size =9
+expansion = 3840
+in_channels = 2048
+out_channels = 2048
+attention = 'tasnem_har.models.units.SqueezeExcitation'
+activation = 'torch.nn.Hardswish'
+stride = 1
+[student_model.model.simh]
+update_steps_max = 2
+update_steps_eps = 1e-2
+[student_model.optimizer]
+reference = "pytorch_ranger.Ranger"
+[student_model.optimizer.kwargs]
+lr = 1e-3
+[student_model.optimizer.scheduler]
+reference = 'torch.optim.lr_scheduler.ReduceLROnPlateau'
+[student_model.optimizer.scheduler.kwargs]
+patience = 5
+factor = 0.85
+verbose = true
+cooldown = 5
+threshold = 1e-7
+mode = "min"
+min_lr = 1e-5
+[student_model.loss]
+reference = "torch.nn.CrossEntropyLoss"
+[student_model.loss.kwargs]
+[student_model.stage_loss]
+

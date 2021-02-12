@@ -1,0 +1,6 @@
+waterch-tasker<0.3.0
+torch<=1.7.1
+pytorch-ignite<=0.4.2
+pytorch-ranger>=0.1.1
+pandas>=1.1.3
+numpy>=1.18.1
