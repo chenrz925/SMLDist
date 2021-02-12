@@ -31,6 +31,7 @@ You can download the RealWorld-HAR dataset by
 
 ```shell
 wget -c http://wifo5-14.informatik.uni-mannheim.de/sensor/dataset/realworld2016/realworld2016_dataset.zip
+wget -c https://github.com/chenrz925/TASNeM-HAR/releases/download/v1.0.1/channel_statistics.zip
 ```
 
 Decompress the zip file, and put "channel_25.npy", "channel_75.npy", "channel_max.npy", "channel_mean.npy",
